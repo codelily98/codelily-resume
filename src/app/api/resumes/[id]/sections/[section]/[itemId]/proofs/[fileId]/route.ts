@@ -6,6 +6,7 @@ import { deleteProof, isProofSection, readProof } from "@/lib/proof-storage";
 import { getResume } from "@/lib/resume-service";
 import { proofFileSchema } from "@/lib/schemas";
 import type { ProofFile, ResumeItemData } from "@/lib/types";
+import { createSupabaseSignedDownload, usesSupabaseStorage } from "@/lib/supabase-storage";
 
 type Context = { params: Promise<{ id: string; section: string; itemId: string; fileId: string }> };
 
@@ -25,6 +26,10 @@ export async function GET(_request: Request, context: Context) {
     if (!isProofSection(section)) return apiError("증빙 파일을 지원하지 않는 섹션입니다.", "INVALID_SECTION");
     const found = await findProof(id, section, itemId, fileId);
     if (!found) return apiError("증빙 파일을 찾을 수 없습니다.", "NOT_FOUND", 404);
+    if (usesSupabaseStorage()) {
+      const signedUrl = await createSupabaseSignedDownload(`${id}/${section}/${itemId}/${fileId}`, found.proof.name);
+      return NextResponse.redirect(signedUrl, 307);
+    }
     const data = await readProof(id, section, itemId, fileId);
     return new NextResponse(data, {
       headers: {

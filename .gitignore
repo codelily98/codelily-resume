@@ -45,3 +45,6 @@ Thumbs.db
 /*.jpg
 /*.jpeg
 /*.png
+
+.vercel
+.env*

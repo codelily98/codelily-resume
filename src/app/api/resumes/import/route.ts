@@ -22,9 +22,18 @@ export async function POST(request: Request) {
     for (const proof of parsed.data.assets?.proofs ?? []) {
       const item = resume.items.find((candidate) => candidate.section === proof.section && candidate.sortOrder === proof.sortOrder);
       if (!item || !isProofSection(item.section)) continue;
-      const hasMetadata = Array.isArray(item.data.proofFiles) && item.data.proofFiles.some((file) => file.id === proof.fileId);
-      if (!hasMetadata) continue;
-      await storeProof(resume.id, item.section, item.id, proof.fileId, Buffer.from(proof.data, "base64"));
+      const metadata = Array.isArray(item.data.proofFiles)
+        ? item.data.proofFiles.find((file) => file.id === proof.fileId)
+        : undefined;
+      if (!metadata) continue;
+      await storeProof(
+        resume.id,
+        item.section,
+        item.id,
+        proof.fileId,
+        Buffer.from(proof.data, "base64"),
+        metadata?.contentType,
+      );
     }
     return NextResponse.json({ resume }, { status: 201 });
   } catch (error) {

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { rm } from "node:fs/promises";
 import { apiError, handleApiError } from "@/lib/api";
 import { deleteResume, getResume, updateResume } from "@/lib/resume-service";
 import { resumePatchSchema } from "@/lib/schemas";
 import { photoDirectory } from "@/lib/photo-storage";
+import { deleteSupabasePrefix, usesSupabaseStorage } from "@/lib/supabase-storage";
+import { rm } from "node:fs/promises";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -33,7 +34,10 @@ export async function DELETE(_request: Request, context: Context) {
   try {
     const { id } = await context.params;
     const deleted = await deleteResume(id);
-    if (deleted) await rm(photoDirectory(id), { recursive: true, force: true });
+    if (deleted) {
+      if (usesSupabaseStorage()) await deleteSupabasePrefix(id);
+      else await rm(photoDirectory(id), { recursive: true, force: true });
+    }
     return deleted ? new NextResponse(null, { status: 204 }) : apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
   } catch (error) {
     return handleApiError(error);
