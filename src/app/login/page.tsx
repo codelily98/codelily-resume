@@ -43,6 +43,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           <input className="input" id="email" name="email" type="email" autoComplete="email" placeholder="name@example.com" required />
           <label className="field-label" htmlFor="password">비밀번호</label>
           <input className="input" id="password" name="password" type="password" autoComplete={registrationOpen ? "new-password" : "current-password"} minLength={8} required />
+          {registrationOpen ? <>
+            <label className="field-label" htmlFor="setupCode">첫 계정 설정 코드</label>
+            <input className="input" id="setupCode" name="setupCode" type="password" autoComplete="one-time-code" required />
+          </> : null}
           <button className="button button-primary button-md auth-submit" type="submit">
             {registrationOpen ? "내 계정 만들기" : "로그인"}
           </button>

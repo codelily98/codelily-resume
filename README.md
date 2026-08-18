@@ -60,6 +60,7 @@ seed에는 실제 개인정보가 아닌 명백한 가상 정보만 포함되어
 | `SUPABASE_SECRET_KEY` | 배포 시 | 서버 전용 Supabase Secret key |
 | `NEXT_PUBLIC_SUPABASE_URL` | Auth 사용 시 | 브라우저 세션용 Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Auth 사용 시 | 브라우저에 공개 가능한 Supabase Publishable key |
+| `LILYUME_SETUP_CODE` | 첫 계정 생성 시 | 공개 배포에서 계정 선점을 막는 서버 전용 1회용 설정 코드 |
 | `SUPABASE_STORAGE_BUCKET` | 배포 시 | 비공개 파일 버킷 이름, 기본값 `resume-assets` |
 | `PUBLIC_DATA_SERVICE_KEY` | 아니요 | 대학알리미 공공데이터 API 인증키 |
 | `OPEN_DART_API_KEY` | 아니요 | OpenDART API 인증키 |
@@ -75,9 +76,9 @@ seed에는 실제 개인정보가 아닌 명백한 가상 정보만 포함되어
 1. Supabase 프로젝트를 만들고 Prisma 마이그레이션을 적용합니다.
 2. `resume-assets`라는 비공개 Storage 버킷을 만들고 파일 크기 제한을 10MB로 설정합니다.
 3. Vercel 프로젝트를 GitHub 저장소와 연결합니다.
-4. Vercel의 Production과 Preview 환경에 `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`를 설정합니다.
+4. Vercel의 Production과 Preview 환경에 `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `LILYUME_SETUP_CODE`를 설정합니다.
 5. `DATABASE_URL`은 Vercel용 Supavisor Transaction pooler 주소를 사용하고 쿼리 문자열에 `pgbouncer=true&connection_limit=1`을 포함합니다.
-6. 첫 접속 시 사용할 이메일과 8자 이상의 비밀번호로 Lilyume 계정을 만듭니다. 첫 계정 생성 후 공개 가입은 자동으로 닫힙니다.
+6. 첫 접속 시 사용할 이메일, 8자 이상의 비밀번호, 서버에 등록한 설정 코드로 Lilyume 계정을 만듭니다. 첫 계정 생성 후 공개 가입은 자동으로 닫힙니다.
 
 업로드는 Vercel 함수의 4.5MB 본문 제한을 통과하도록 서버에서 짧게 유효한 서명 URL을 발급하고 브라우저가 비공개 Supabase Storage로 직접 전송합니다. 다운로드도 짧게 유효한 서명 URL로 이동하므로 최대 10MB 증빙 파일을 그대로 사용할 수 있습니다.
 

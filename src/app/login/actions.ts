@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { createFirstAccount } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -8,6 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const credentialsSchema = z.object({
   email: z.email("이메일 주소를 확인해 주세요."),
   password: z.string().min(8, "비밀번호는 8자 이상 입력해 주세요.").max(72),
+  setupCode: z.string().optional(),
   next: z.string().optional(),
 });
 
@@ -19,6 +21,14 @@ function loginRedirect(kind: "error" | "message", message: string, next?: string
   const params = new URLSearchParams({ [kind]: message });
   if (next) params.set("next", safeNext(next));
   redirect(`/login?${params.toString()}`);
+}
+
+function isValidSetupCode(value?: string) {
+  const expected = process.env.LILYUME_SETUP_CODE;
+  if (!expected || !value) return false;
+  const actualBuffer = Buffer.from(value);
+  const expectedBuffer = Buffer.from(expected);
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
 export async function signIn(formData: FormData) {
@@ -37,6 +47,9 @@ export async function signIn(formData: FormData) {
 export async function signUp(formData: FormData) {
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) loginRedirect("error", parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요.");
+  if (!isValidSetupCode(parsed.data.setupCode)) {
+    loginRedirect("error", "첫 계정 설정 코드를 확인해 주세요.", parsed.data.next);
+  }
 
   let user;
   try {
