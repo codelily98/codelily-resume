@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Resume {
+  id                String       @id @default(cuid())
+  title             String
+  headline          String       @default("")
+  template          String       @default("default-a4")
+  accentColor       String       @default("#0b5fff")
+  sectionOrder      Json
+  sectionVisibility Json
+  showDeclaration   Boolean      @default(false)
+  declarationText   String       @default("") @db.Text
+  version           Int          @default(1)
+  lastPrintedAt     DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  profile           Profile?
+  items             ResumeItem[]
+
+  @@index([updatedAt])
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  resumeId    String   @unique
+  name        String   @default("")
+  englishName String   @default("")
+  birthDate   DateTime? @db.Date
+  gender      String   @default("")
+  phone       String   @default("")
+  email       String   @default("")
+  address     String   @default("")
+  website     String   @default("")
+  github      String   @default("")
+  linkedin    String   @default("")
+  summary     String   @default("") @db.Text
+  photoPath   String   @default("")
+  visibility  Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  resume      Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+}
+
+model ResumeItem {
+  id        String   @id @default(cuid())
+  resumeId  String
+  section   String
+  sortOrder Int      @default(0)
+  isVisible Boolean  @default(true)
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  resume    Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId, section, sortOrder])
+}

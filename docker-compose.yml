@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: lilyume-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: resume
+      POSTGRES_USER: resume
+      POSTGRES_PASSWORD: resume_local
+    ports:
+      - "54329:5432"
+    volumes:
+      - resume_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resume -d resume"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  resume_pg_data:
