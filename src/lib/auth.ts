@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { User } from "@supabase/supabase-js";
-import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export class AuthenticationRequiredError extends Error {
@@ -16,9 +15,6 @@ export async function requireUser(): Promise<User> {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new AuthenticationRequiredError();
 
-  // The pre-Auth version stored resumes without an owner. The first authenticated
-  // Lilyume account safely adopts those records once, without deleting data.
-  await prisma.resume.updateMany({ where: { ownerId: null }, data: { ownerId: data.user.id } });
   return data.user;
 }
 
