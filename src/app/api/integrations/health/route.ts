@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { classifyDatabaseError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -14,14 +15,6 @@ function hasValidDatabaseUrl() {
   }
 }
 
-function safeErrorCode(error: unknown) {
-  if (!(error instanceof Error)) return "UNKNOWN";
-  const details = error as Error & { code?: unknown; errorCode?: unknown };
-  if (typeof details.code === "string") return details.code;
-  if (typeof details.errorCode === "string") return details.errorCode;
-  return error.name || "UNKNOWN";
-}
-
 export async function GET() {
   const database = {
     configured: Boolean(process.env.DATABASE_URL),
@@ -35,7 +28,7 @@ export async function GET() {
       await prisma.$queryRaw`SELECT 1`;
       database.connected = true;
     } catch (error) {
-      database.errorCode = safeErrorCode(error);
+      database.errorCode = classifyDatabaseError(error) ?? "DATABASE_INITIALIZATION_FAILED";
     }
   } else if (database.configured) {
     database.errorCode = "DATABASE_URL_INVALID";
