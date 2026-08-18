@@ -79,7 +79,7 @@ export function Dashboard() {
           <div className="empty-state">
             <span className="empty-icon"><FileText aria-hidden="true" size={28} /></span>
             <h2>{query ? "검색 결과가 없습니다." : "첫 이력서를 만들어 보세요."}</h2>
-            <p>{query ? "다른 제목으로 검색해 보세요." : "입력한 정보는 로컬 PostgreSQL에만 저장됩니다."}</p>
+            <p>{query ? "다른 제목으로 검색해 보세요." : "입력한 정보는 내 Lilyume 계정에 안전하게 저장됩니다."}</p>
             {!query ? <Link className="button button-primary button-md" href="/resumes/new"><FilePlus2 size={17} />새 이력서 만들기</Link> : null}
           </div>
         ) : (

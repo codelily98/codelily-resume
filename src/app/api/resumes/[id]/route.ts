@@ -5,13 +5,15 @@ import { resumePatchSchema } from "@/lib/schemas";
 import { photoDirectory } from "@/lib/photo-storage";
 import { deleteSupabasePrefix, usesSupabaseStorage } from "@/lib/supabase-storage";
 import { rm } from "node:fs/promises";
+import { requireUser } from "@/lib/auth";
 
 type Context = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, context: Context) {
   try {
+    const user = await requireUser();
     const { id } = await context.params;
-    const resume = await getResume(id);
+    const resume = await getResume(user.id, id);
     return resume ? NextResponse.json({ resume }) : apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
   } catch (error) {
     return handleApiError(error);
@@ -20,10 +22,11 @@ export async function GET(_request: Request, context: Context) {
 
 export async function PATCH(request: Request, context: Context) {
   try {
+    const user = await requireUser();
     const { id } = await context.params;
     const parsed = resumePatchSchema.safeParse(await request.json());
     if (!parsed.success) return apiError(parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요.", "VALIDATION_ERROR");
-    const resume = await updateResume(id, parsed.data);
+    const resume = await updateResume(user.id, id, parsed.data);
     return resume ? NextResponse.json({ resume }) : apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
   } catch (error) {
     return handleApiError(error);
@@ -32,8 +35,9 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
+    const user = await requireUser();
     const { id } = await context.params;
-    const deleted = await deleteResume(id);
+    const deleted = await deleteResume(user.id, id);
     if (deleted) {
       if (usesSupabaseStorage()) await deleteSupabasePrefix(id);
       else await rm(photoDirectory(id), { recursive: true, force: true });

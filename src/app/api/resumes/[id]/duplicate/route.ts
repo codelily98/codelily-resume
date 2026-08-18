@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { apiError, handleApiError } from "@/lib/api";
 import { duplicateResume } from "@/lib/resume-service";
+import { requireUser } from "@/lib/auth";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await requireUser();
     const { id } = await params;
-    const resume = await duplicateResume(id);
+    const resume = await duplicateResume(user.id, id);
     return resume ? NextResponse.json({ resume }, { status: 201 }) : apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
   } catch (error) {
     return handleApiError(error);

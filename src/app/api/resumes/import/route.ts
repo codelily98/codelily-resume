@@ -6,12 +6,14 @@ import type { ResumeData } from "@/lib/types";
 import { storePhoto } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 import { isProofSection, storeProof } from "@/lib/proof-storage";
+import { requireUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const user = await requireUser();
     const parsed = importSchema.safeParse(await request.json());
     if (!parsed.success) return apiError("지원하지 않거나 손상된 백업 파일입니다.", "INVALID_BACKUP");
-    const resume = await importResume(parsed.data.resume as unknown as Omit<ResumeData, "id" | "createdAt" | "updatedAt" | "version" | "lastPrintedAt">);
+    const resume = await importResume(user.id, parsed.data.resume as unknown as Omit<ResumeData, "id" | "createdAt" | "updatedAt" | "version" | "lastPrintedAt">);
     const photo = parsed.data.assets?.photo;
     if (photo) {
       const extension = photo.contentType === "image/jpeg" ? "jpg" : photo.contentType === "image/png" ? "png" : "webp";

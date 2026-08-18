@@ -63,8 +63,9 @@ function serializeResume(record: ResumeRecord): ResumeData {
   };
 }
 
-export async function listResumes(): Promise<ResumeListItem[]> {
+export async function listResumes(ownerId: string): Promise<ResumeListItem[]> {
   const records = await prisma.resume.findMany({
+    where: { ownerId },
     include: { profile: true, items: { select: { section: true } } },
     orderBy: { updatedAt: "desc" },
   });
@@ -84,9 +85,10 @@ export async function listResumes(): Promise<ResumeListItem[]> {
   });
 }
 
-export async function createResume(title: string) {
+export async function createResume(ownerId: string, title: string) {
   const record = await prisma.resume.create({
     data: {
+      ownerId,
       title,
       sectionOrder: SECTION_ORDER as unknown as Prisma.InputJsonValue,
       sectionVisibility: DEFAULT_SECTION_VISIBILITY as unknown as Prisma.InputJsonValue,
@@ -101,12 +103,17 @@ export async function createResume(title: string) {
   return serializeResume(record);
 }
 
-export async function getResume(id: string) {
-  const record = await prisma.resume.findUnique({
-    where: { id },
+export async function getResume(ownerId: string, id: string) {
+  const record = await prisma.resume.findFirst({
+    where: { id, ownerId },
     include: { profile: true, items: { orderBy: { sortOrder: "asc" } } },
   });
   return record ? serializeResume(record) : null;
+}
+
+export async function ownsResume(ownerId: string, id: string) {
+  const resume = await prisma.resume.findFirst({ where: { id, ownerId }, select: { id: true } });
+  return Boolean(resume);
 }
 
 type UpdateInput = {
@@ -121,8 +128,8 @@ type UpdateInput = {
   profile?: ProfileData;
 };
 
-export async function updateResume(id: string, input: UpdateInput) {
-  const current = await prisma.resume.findUnique({ where: { id }, select: { version: true } });
+export async function updateResume(ownerId: string, id: string, input: UpdateInput) {
+  const current = await prisma.resume.findFirst({ where: { id, ownerId }, select: { version: true } });
   if (!current) return null;
   const expectedVersion = input.version ?? current.version;
 
@@ -136,7 +143,7 @@ export async function updateResume(id: string, input: UpdateInput) {
   if (input.declarationText !== undefined) rootData.declarationText = input.declarationText;
 
   const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.resume.updateMany({ where: { id, version: expectedVersion }, data: rootData });
+    const result = await tx.resume.updateMany({ where: { id, ownerId, version: expectedVersion }, data: rootData });
     if (result.count === 0) throw new Error("VERSION_CONFLICT");
     if (input.profile) {
       const profile = input.profile;
@@ -182,11 +189,12 @@ export async function updateResume(id: string, input: UpdateInput) {
 }
 
 export async function replaceSection(
+  ownerId: string,
   resumeId: string,
   section: EditableSectionKey,
   items: Array<{ id?: string; isVisible: boolean; data: ResumeItemData["data"] }>,
 ) {
-  const exists = await prisma.resume.findUnique({ where: { id: resumeId }, select: { id: true } });
+  const exists = await prisma.resume.findFirst({ where: { id: resumeId, ownerId }, select: { id: true } });
   if (!exists) return null;
   const removedProofItemIds = isProofSection(section)
     ? (await prisma.resumeItem.findMany({ where: { resumeId, section }, select: { id: true } }))
@@ -210,19 +218,20 @@ export async function replaceSection(
   if (isProofSection(section)) {
     await Promise.all(removedProofItemIds.map((itemId) => deleteProofDirectory(resumeId, section, itemId)));
   }
-  return getResume(resumeId);
+  return getResume(ownerId, resumeId);
 }
 
-export async function deleteResume(id: string) {
-  const result = await prisma.resume.deleteMany({ where: { id } });
+export async function deleteResume(ownerId: string, id: string) {
+  const result = await prisma.resume.deleteMany({ where: { id, ownerId } });
   return result.count > 0;
 }
 
-export async function duplicateResume(id: string) {
-  const source = await prisma.resume.findUnique({ where: { id }, include: { profile: true, items: true } });
+export async function duplicateResume(ownerId: string, id: string) {
+  const source = await prisma.resume.findFirst({ where: { id, ownerId }, include: { profile: true, items: true } });
   if (!source) return null;
   const record = await prisma.resume.create({
     data: {
+      ownerId,
       title: `${source.title} 복사본`,
       headline: source.headline,
       template: source.template,
@@ -264,9 +273,10 @@ export async function duplicateResume(id: string) {
   return serializeResume(record);
 }
 
-export async function importResume(data: Omit<ResumeData, "id" | "createdAt" | "updatedAt" | "version" | "lastPrintedAt">) {
+export async function importResume(ownerId: string, data: Omit<ResumeData, "id" | "createdAt" | "updatedAt" | "version" | "lastPrintedAt">) {
   const record = await prisma.resume.create({
     data: {
+      ownerId,
       title: `${data.title} (가져옴)`,
       headline: data.headline,
       accentColor: data.accentColor,

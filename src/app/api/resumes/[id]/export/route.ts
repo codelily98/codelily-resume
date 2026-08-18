@@ -3,11 +3,13 @@ import { getResume } from "@/lib/resume-service";
 import { readStoredPhoto } from "@/lib/photo-storage";
 import { isProofSection, readProof } from "@/lib/proof-storage";
 import { proofFileSchema } from "@/lib/schemas";
+import { requireUser } from "@/lib/auth";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await requireUser();
     const { id } = await params;
-    const resume = await getResume(id);
+    const resume = await getResume(user.id, id);
     if (!resume) return apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
     const photo = await readStoredPhoto(id);
     const proofs: Array<{ section: "training" | "certifications"; sortOrder: number; fileId: string; data: string }> = [];

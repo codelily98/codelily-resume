@@ -1,6 +1,6 @@
 # Lilyume
 
-로컬 PostgreSQL 또는 Supabase에 이력서를 저장하고, A4 미리보기와 브라우저 인쇄 기능으로 회사 제출용 PDF를 만드는 Next.js 애플리케이션입니다.
+로컬 PostgreSQL 또는 Supabase에 이력서를 저장하고, A4 미리보기와 브라우저 인쇄 기능으로 회사 제출용 PDF를 만드는 개인 이력서 애플리케이션입니다.
 
 ## 주요 기능
 
@@ -9,6 +9,7 @@
 - 반복 항목 추가, 수정, 복제, 삭제, 위/아래 이동, 출력 포함 여부 설정
 - TanStack Query 기반 조회, mutation, 자동 저장 상태 표시
 - PostgreSQL/Supabase Postgres + Prisma 영구 저장
+- Supabase Auth 이메일·비밀번호 로그인과 사용자별 데이터 분리
 - 로컬 파일 시스템과 Supabase Storage 자동 전환
 - 증명사진 업로드(JPEG/PNG/WebP, 최대 5MB)
 - 교육·자격증 증빙 파일 첨부(항목당 최대 5개, 파일당 10MB)와 다운로드·삭제
@@ -57,6 +58,8 @@ seed에는 실제 개인정보가 아닌 명백한 가상 정보만 포함되어
 | `DATABASE_URL` | 예 | 로컬 PostgreSQL 연결 문자열 |
 | `SUPABASE_URL` | 배포 시 | Supabase 프로젝트 URL |
 | `SUPABASE_SECRET_KEY` | 배포 시 | 서버 전용 Supabase Secret key |
+| `NEXT_PUBLIC_SUPABASE_URL` | Auth 사용 시 | 브라우저 세션용 Supabase 프로젝트 URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Auth 사용 시 | 브라우저에 공개 가능한 Supabase Publishable key |
 | `SUPABASE_STORAGE_BUCKET` | 배포 시 | 비공개 파일 버킷 이름, 기본값 `resume-assets` |
 | `PUBLIC_DATA_SERVICE_KEY` | 아니요 | 대학알리미 공공데이터 API 인증키 |
 | `OPEN_DART_API_KEY` | 아니요 | OpenDART API 인증키 |
@@ -72,9 +75,9 @@ seed에는 실제 개인정보가 아닌 명백한 가상 정보만 포함되어
 1. Supabase 프로젝트를 만들고 Prisma 마이그레이션을 적용합니다.
 2. `resume-assets`라는 비공개 Storage 버킷을 만들고 파일 크기 제한을 10MB로 설정합니다.
 3. Vercel 프로젝트를 GitHub 저장소와 연결합니다.
-4. Vercel의 Production, Preview, Development 환경에 `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET`을 설정합니다.
+4. Vercel의 Production과 Preview 환경에 `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`를 설정합니다.
 5. `DATABASE_URL`은 Vercel용 Supavisor Transaction pooler 주소를 사용하고 쿼리 문자열에 `pgbouncer=true&connection_limit=1`을 포함합니다.
-6. Production 배포 후 Vercel Authentication을 켜 개인정보와 수정 API를 보호합니다.
+6. 첫 접속 시 사용할 이메일과 8자 이상의 비밀번호로 Lilyume 계정을 만듭니다. 첫 계정 생성 후 공개 가입은 자동으로 닫힙니다.
 
 업로드는 Vercel 함수의 4.5MB 본문 제한을 통과하도록 서버에서 짧게 유효한 서명 URL을 발급하고 브라우저가 비공개 Supabase Storage로 직접 전송합니다. 다운로드도 짧게 유효한 서명 URL로 이동하므로 최대 10MB 증빙 파일을 그대로 사용할 수 있습니다.
 
@@ -133,9 +136,15 @@ data/uploads/            로컬 사진 저장소(Git 제외)
 - TanStack Router는 Next.js 라우터와 역할이 겹치므로 1차 버전에 중복 설치하지 않았습니다.
 - 서버 측 PDF 파일 생성은 범위에서 제외하고 브라우저 인쇄를 사용합니다.
 
+## 인증과 데이터 보호
+
+- 페이지와 모든 이력서·첨부파일 API는 Supabase Auth 세션을 확인합니다.
+- 이력서는 Auth 사용자 ID로 구분하며 다른 계정의 URL을 알아도 조회하거나 수정할 수 없습니다.
+- Auth 도입 전에 저장된 이력서는 첫 로그인 계정에 자동 귀속됩니다.
+- Supabase Secret key와 데이터베이스 연결 문자열은 서버에서만 사용합니다.
+
 ## 현재 제한 사항
 
-- 앱 자체 계정 기능은 없으므로 운영 배포에서는 Vercel Authentication 같은 배포 접근 보호를 반드시 사용해야 합니다.
 - 회사 검색은 OpenDART 공시대상 회사만 포함합니다.
 - 대학알리미는 국내 고등교육 기관 중심이며, 결과가 없는 학교는 직접 입력해야 합니다.
 - 브라우저별 인쇄 결과 차이를 줄이기 위해 Chromium 또는 Edge 사용을 권장합니다.

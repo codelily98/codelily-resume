@@ -8,7 +8,7 @@ import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "Lilyume",
-  description: "로컬에서 안전하게 작성하고 A4 PDF로 인쇄하는 이력서 도구",
+  description: "어디서든 안전하게 작성하고 A4 PDF로 인쇄하는 개인 이력서 도구",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

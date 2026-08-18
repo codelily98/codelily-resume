@@ -21,6 +21,8 @@ import {
   getSupabaseObjectInfo,
   usesSupabaseStorage,
 } from "@/lib/supabase-storage";
+import { requireUser } from "@/lib/auth";
+import { ownsResume } from "@/lib/resume-service";
 
 type Context = { params: Promise<{ id: string; section: string; itemId: string }> };
 
@@ -49,11 +51,13 @@ export async function POST(request: Request, context: Context) {
   let proofSection: "training" | "certifications" | null = null;
 
   try {
+    const user = await requireUser();
     const { id, section, itemId: routeItemId } = await context.params;
     if (!isProofSection(section)) return apiError("증빙 파일을 지원하지 않는 섹션입니다.", "INVALID_SECTION");
     resumeId = id;
     itemId = routeItemId;
     proofSection = section;
+    if (!await ownsResume(user.id, resumeId)) return apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
 
     const item = await prisma.resumeItem.findFirst({ where: { id: itemId, resumeId, section } });
     if (!item) return apiError("항목을 찾을 수 없습니다.", "NOT_FOUND", 404);
@@ -112,7 +116,7 @@ export async function POST(request: Request, context: Context) {
           prisma.resumeItem.update({ where: { id: itemId }, data: { data: nextData as Prisma.InputJsonValue } }),
           prisma.resume.update({ where: { id: resumeId }, data: { version: { increment: 1 } } }),
         ]);
-        const resume = await getResume(resumeId);
+        const resume = await getResume(user.id, resumeId);
         return NextResponse.json({ resume });
       }
 
@@ -157,7 +161,7 @@ export async function POST(request: Request, context: Context) {
       prisma.resumeItem.update({ where: { id: itemId }, data: { data: nextData as Prisma.InputJsonValue } }),
       prisma.resume.update({ where: { id: resumeId }, data: { version: { increment: 1 } } }),
     ]);
-    const resume = await getResume(resumeId);
+    const resume = await getResume(user.id, resumeId);
     return NextResponse.json({ resume });
   } catch (error) {
     if (proofSection) {
@@ -170,8 +174,10 @@ export async function POST(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
+    const user = await requireUser();
     const { id, section, itemId } = await context.params;
     if (!isProofSection(section)) return apiError("증빙 파일을 지원하지 않는 섹션입니다.", "INVALID_SECTION");
+    if (!await ownsResume(user.id, id)) return apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
     const item = await prisma.resumeItem.findFirst({ where: { id: itemId, resumeId: id, section } });
     if (!item) return apiError("항목을 찾을 수 없습니다.", "NOT_FOUND", 404);
     await deleteProofDirectory(id, section, itemId);
@@ -180,7 +186,7 @@ export async function DELETE(_request: Request, context: Context) {
       prisma.resumeItem.update({ where: { id: itemId }, data: { data: nextData as Prisma.InputJsonValue } }),
       prisma.resume.update({ where: { id }, data: { version: { increment: 1 } } }),
     ]);
-    const resume = await getResume(id);
+    const resume = await getResume(user.id, id);
     return NextResponse.json({ resume });
   } catch (error) {
     return handleApiError(error);

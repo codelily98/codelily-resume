@@ -8,6 +8,8 @@ import {
   downloadSupabaseObject,
   usesSupabaseStorage,
 } from "@/lib/supabase-storage";
+import { requireUser } from "@/lib/auth";
+import { ownsResume } from "@/lib/resume-service";
 
 const MAX_SIZE = 5 * 1024 * 1024;
 
@@ -27,9 +29,9 @@ function imageFromContentType(contentType: string) {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await requireUser();
     const { id } = await params;
-    const exists = await prisma.resume.findUnique({ where: { id }, select: { id: true } });
-    if (!exists) return apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
+    if (!await ownsResume(user.id, id)) return apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
 
     if (request.headers.get("content-type")?.includes("application/json")) {
       const input = await request.json() as { action?: string; contentType?: string; size?: number };
@@ -80,7 +82,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await requireUser();
     const { id } = await params;
+    if (!await ownsResume(user.id, id)) return new NextResponse(null, { status: 404 });
     const profile = await prisma.profile.findUnique({ where: { resumeId: id }, select: { photoPath: true } });
     if (!profile?.photoPath) return new NextResponse(null, { status: 404 });
     const type = new URL(request.url).searchParams.get("type");
@@ -98,7 +102,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await requireUser();
     const { id } = await params;
+    if (!await ownsResume(user.id, id)) return apiError("이력서를 찾을 수 없습니다.", "NOT_FOUND", 404);
     await deleteStoredPhoto(id);
     await prisma.profile.update({ where: { resumeId: id }, data: { photoPath: "" } });
     return new NextResponse(null, { status: 204 });
